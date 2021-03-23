@@ -11,7 +11,7 @@ class Items(BaseModel):
     name = TextField(column_name='name', null=False)
     done = BooleanField(column_name='done', null=False, default=False)
     num = IntegerField(column_name='num', sequence='item_por_num',
-                       null=False, unique=False, constraints=[SQL("DEFAULT NEXTVAL('item_por_num')")])
+                       null=False, unique=False)
 
     class Meta:
         table_name = 'Items'
