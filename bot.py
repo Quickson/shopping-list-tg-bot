@@ -29,6 +29,7 @@ class Config:
     TELEGRAM_TOKEN = os.environ.get("TOKEN_SHOPPING_LIST", "")
     MODE = os.environ.get("MODE", "polling")
     WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
+    HEROKU_APP_NAME = os.environ.get("APP_NAME", "")
 
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 
@@ -156,10 +157,14 @@ def start_bot():
     # Start the Bot
     if Config.MODE == 'webhook':
 
-        updater.bot.setWebhook(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN)
+        # updater.bot.setWebhook(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN)
+        # updater.start_webhook(listen="0.0.0.0",
+        #                       port=int(Config.PORT),
+        #                       url_path=Config.TELEGRAM_TOKEN)
         updater.start_webhook(listen="0.0.0.0",
                               port=int(Config.PORT),
-                              url_path=Config.TELEGRAM_TOKEN)
+                              url_path=Config.TELEGRAM_TOKEN,
+                              webhook_url="https://{}.herokuapp.com/{}".format(Config.HEROKU_APP_NAME, Config.TELEGRAM_TOKEN))
 
         logging.info(f"Start webhook mode on port {Config.PORT}")
     else:
