@@ -137,7 +137,7 @@ def start_bot():
     logger.info("PORT_WEBHOOK = %s", PORT_WEBHOOK)
     logger.info("URL_WEBHOOK + TOKEN_ID = %s", URL_WEBHOOK + TOKEN_ID)
     # Start the Bot
-    updater.start_webhook(listen="0.0.0.0",
+    updater.start_webhook(listen="127.0.0.1",
                           port=int(PORT_WEBHOOK),
                           url_path=TOKEN_ID)
     updater.bot.setWebhook(str(URL_WEBHOOK + TOKEN_ID))
