@@ -140,7 +140,7 @@ def start_bot():
     updater.start_webhook(listen="0.0.0.0",
                           port=PORT_WEBHOOK,
                           url_path=TOKEN_ID)
-    updater.bot.setWebhook(str(URL_WEBHOOK + TOKEN_ID))
+    updater.bot.setWebhook("https://shopping-list-tg.herokuapp.com/" + TOKEN_ID)
 
     # Run the bot until the users presses Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
