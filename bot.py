@@ -134,7 +134,7 @@ def start_bot():
     updater.dispatcher.add_error_handler(error)
 
     logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
-    logger.info("PORT_WEBHOOK = %s", PORT)
+    logger.info("PORT = {}".format(PORT))
     logger.info("URL_WEBHOOK + TOKEN_ID = %s", URL_WEBHOOK + TOKEN_ID)
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
