@@ -9,7 +9,7 @@ Basic example for a bot that uses inline keyboards.
 """
 
 import logging
-from const import TOKEN_ID
+from const import TOKEN_ID, URL_WEBHOOK, PORT_WEBHOOK
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
@@ -21,9 +21,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-
-
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -111,6 +108,11 @@ def add_to_list(update: Update, context: CallbackContext):
     update.message.reply_markdown('Ваш список:', reply_markup=reply_markup)
 
 
+def error(update, context):
+    """Log Errors caused by Updates."""
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
+
+
 def start_bot():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
@@ -125,12 +127,17 @@ def start_bot():
     updater.dispatcher.add_handler(CallbackQueryHandler(confirmation_remove_all, pattern='^confirmation_remove_all$'))
     updater.dispatcher.add_handler(CallbackQueryHandler(remove_all, pattern='^clear_all$'))
 
-
     updater.dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, add_to_list))
     updater.dispatcher.add_handler(CommandHandler('help', help_command))
 
+    # log all errors
+    updater.dispatcher.add_error_handler(error)
+
     # Start the Bot
-    updater.start_polling()
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT_WEBHOOK),
+                          url_path=TOKEN_ID)
+    updater.bot.setWebhook(URL_WEBHOOK + TOKEN_ID)
 
     # Run the bot until the users presses Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
