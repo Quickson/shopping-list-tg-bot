@@ -9,8 +9,8 @@ Basic example for a bot that uses inline keyboards.
 """
 
 import logging
-from const import TOKEN_ID, URL_WEBHOOK
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from const import TOKEN_ID
+from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
 from models.users.users import save_user
@@ -22,6 +22,20 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+
+class Config:
+    PORT = int(os.environ.get("PORT", 5000))
+    TELEGRAM_TOKEN = os.environ.get("TOKEN_SHOPPING_LIST", "")
+    MODE = os.environ.get("MODE", "polling")
+    WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
+
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
+
+    @staticmethod
+    def init_logging():
+        logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                            level=Config.LOG_LEVEL)
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -45,6 +59,7 @@ def done(update: Update, context: CallbackContext) -> None:
     item.save()
 
     keyboard_list = get_keyboard_markup_list(query.from_user)
+
     #keyboard_list = query.message.reply_markup.inline_keyboard
     # for i in keyboard_list:
     #     if i[0].callback_data != data:
@@ -115,6 +130,7 @@ def error(update, context):
 
 
 def start_bot():
+    Config.init_logging()
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
@@ -134,17 +150,21 @@ def start_bot():
     # log all errors
     updater.dispatcher.add_error_handler(error)
 
-    PORT = int(os.environ.get('PORT', 5000))
-
-    logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
-    logger.info("PORT = {}".format(PORT))
-    logger.info("URL_WEBHOOK + TOKEN_ID = %s", URL_WEBHOOK + TOKEN_ID)
+    logger.info("URL_WEBHOOK = {}".format(Config.WEBHOOK_URL))
+    logger.info("PORT = {}".format(Config.PORT))
+    logger.info("URL_WEBHOOK + TOKEN_ID = {}".format(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN))
     # Start the Bot
-    updater.bot.setWebhook("https://shopping-list-tg.herokuapp.com/" + TOKEN_ID)
-    updater.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path=TOKEN_ID)
+    if Config.MODE == 'webhook':
+        updater.start_webhook(listen="0.0.0.0",
+                              port=int(Config.PORT),
+                              url_path=Config.TELEGRAM_TOKEN)
+        updater.bot.setWebhook(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN)
 
+        logging.info(f"Start webhook mode on port {Config.PORT}")
+    else:
+        updater.start_polling()
+        logging.info(f"Start polling mode")
+        
     # Run the bot until the users presses Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
     updater.idle()
