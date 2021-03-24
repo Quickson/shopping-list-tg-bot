@@ -134,7 +134,7 @@ def start_bot():
     # log all errors
     updater.dispatcher.add_error_handler(error)
 
-    PORT = int(os.environ.get('PORT', 5000))
+    PORT = 443#int(os.environ.get('PORT', 5000))
 
     logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
     logger.info("PORT = {}".format(PORT))
