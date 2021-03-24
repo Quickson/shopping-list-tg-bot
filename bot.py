@@ -9,7 +9,7 @@ Basic example for a bot that uses inline keyboards.
 """
 
 import logging
-from const import TOKEN_ID, URL_WEBHOOK, PORT_WEBHOOK
+from const import TOKEN_ID, URL_WEBHOOK, PORT
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
@@ -134,11 +134,11 @@ def start_bot():
     updater.dispatcher.add_error_handler(error)
 
     logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
-    logger.info("PORT_WEBHOOK = %s", PORT_WEBHOOK)
+    logger.info("PORT_WEBHOOK = %s", PORT)
     logger.info("URL_WEBHOOK + TOKEN_ID = %s", URL_WEBHOOK + TOKEN_ID)
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
-                          port=PORT_WEBHOOK,
+                          port=PORT,
                           url_path=TOKEN_ID)
     updater.bot.setWebhook("https://shopping-list-tg.herokuapp.com/" + TOKEN_ID)
 
