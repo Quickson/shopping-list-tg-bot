@@ -14,6 +14,11 @@ class Config:
 
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 
+    DB_NAME = os.environ.get("DB_NAME", "test")
+    DB_USER = os.environ.get("DB_USER", "postgres")
+    DB_HOST = os.environ.get("DB_HOST", "localhost")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
+
     @staticmethod
     def init_logging():
         logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',

@@ -1,11 +1,8 @@
 from peewee import *
-import os
+from const import Config
 
-db = PostgresqlDatabase(os.environ['DB_NAME'], user=os.environ['DB_USER'], host=os.environ['DB_HOST'],
-                        password=os.environ['DB_PASSWORD'])
-
-# db = PostgresqlDatabase('test', user='postgres', host='localhost',
-#                         password='postgres')
+db = PostgresqlDatabase(Config.DB_NAME, user=Config.DB_USER, host=Config.DB_HOST,
+                        password=Config.DB_PASSWORD)
 
 
 class BaseModel(Model):
