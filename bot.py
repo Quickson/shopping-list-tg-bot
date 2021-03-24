@@ -155,10 +155,11 @@ def start_bot():
     logger.info("URL_WEBHOOK + TOKEN_ID = {}".format(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN))
     # Start the Bot
     if Config.MODE == 'webhook':
+
+        updater.bot.setWebhook(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN)
         updater.start_webhook(listen="0.0.0.0",
                               port=int(Config.PORT),
                               url_path=Config.TELEGRAM_TOKEN)
-        updater.bot.setWebhook(Config.WEBHOOK_URL + Config.TELEGRAM_TOKEN)
 
         logging.info(f"Start webhook mode on port {Config.PORT}")
     else:
