@@ -24,8 +24,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-PORT = int(os.environ.get('PORT', 5000))
-
 def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     logger.info("users %s started the conversation.", user)
@@ -135,6 +133,8 @@ def start_bot():
 
     # log all errors
     updater.dispatcher.add_error_handler(error)
+
+    PORT = int(os.environ.get('PORT', 5000))
 
     logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
     logger.info("PORT = {}".format(PORT))
