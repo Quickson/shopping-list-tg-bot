@@ -9,12 +9,13 @@ Basic example for a bot that uses inline keyboards.
 """
 
 import logging
-from const import TOKEN_ID, URL_WEBHOOK, PORT
+from const import TOKEN_ID, URL_WEBHOOK
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
 from models.users.users import save_user
 import re
+import os
 from clear_list import remove_all, confirmation_remove_all, show_list
 
 logging.basicConfig(
@@ -22,6 +23,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+PORT = int(os.environ.get('PORT', 5000))
 
 def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
