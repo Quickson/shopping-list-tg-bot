@@ -135,12 +135,12 @@ def start_bot():
 
     logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
     logger.info("PORT_WEBHOOK = %s", PORT_WEBHOOK)
+    logger.info("URL_WEBHOOK + TOKEN_ID = %s", URL_WEBHOOK + TOKEN_ID)
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT_WEBHOOK),
-                          url_path=TOKEN_ID,
-                          webhook_url=str(URL_WEBHOOK + TOKEN_ID))
-    #updater.bot.setWebhook(URL_WEBHOOK + TOKEN_ID)
+                          url_path=TOKEN_ID)
+    updater.bot.setWebhook(str(URL_WEBHOOK + TOKEN_ID))
 
     # Run the bot until the users presses Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
