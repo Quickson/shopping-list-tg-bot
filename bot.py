@@ -134,16 +134,16 @@ def start_bot():
     # log all errors
     updater.dispatcher.add_error_handler(error)
 
-    PORT = 443#int(os.environ.get('PORT', 5000))
+    PORT = int(os.environ.get('PORT', 5000))
 
     logger.info("URL_WEBHOOK = %s", URL_WEBHOOK)
     logger.info("PORT = {}".format(PORT))
     logger.info("URL_WEBHOOK + TOKEN_ID = %s", URL_WEBHOOK + TOKEN_ID)
     # Start the Bot
+    updater.bot.setWebhook("https://shopping-list-tg.herokuapp.com/" + TOKEN_ID)
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT),
                           url_path=TOKEN_ID)
-    #updater.bot.setWebhook("https://shopping-list-tg.herokuapp.com/" + TOKEN_ID)
 
     # Run the bot until the users presses Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
