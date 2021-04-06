@@ -6,7 +6,8 @@ from models.create_tables import get_tables
 
 class AdminNotification:
     def __init__(self, bot: Bot):
-        self.admin_chat_id = os.environ.get('ADMIN_CHAT_ID', None)
+        admin_chat_id = os.environ.get('ADMIN_CHAT_ID', None)
+        self.admin_chat_id = int(admin_chat_id) if admin_chat_id else None
         self.bot = bot
 
     def init_handlers(self, dispatcher: Dispatcher):
