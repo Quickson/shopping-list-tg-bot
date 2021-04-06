@@ -2,9 +2,6 @@ import os
 import logging
 
 
-TOKEN_ID = os.environ['TOKEN_SHOPPING_LIST']
-
-
 class Config:
     PORT = int(os.environ.get("PORT", 5000))
     TELEGRAM_TOKEN = os.environ.get("TOKEN_SHOPPING_LIST", "")

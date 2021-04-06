@@ -9,13 +9,14 @@ Basic example for a bot that uses inline keyboards.
 """
 
 import logging
-from const import TOKEN_ID, Config
+from const import Config
 from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
 from models.users.users import save_user
 import re
 from clear_list import remove_all, confirmation_remove_all, show_list
+from addons.admins_notifications import AdminNotification
 
 
 def start_command_handler(update: Update, context: CallbackContext) -> None:
@@ -26,6 +27,7 @@ def start_command_handler(update: Update, context: CallbackContext) -> None:
 
     keyboard = get_keyboard_markup_list(user)
     update.message.reply_text('Ваш список:', reply_markup=InlineKeyboardMarkup(keyboard))
+    logging.info("users %s started the conversation.", update.message)
 
 
 def done(update: Update, context: CallbackContext) -> None:
@@ -63,10 +65,12 @@ def remove(update: Update, context: CallbackContext) -> None:
 
 
 def help_command_handler(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Use /start to test this bot.")
+    update.message.reply_text("""Бот формирует список из отправленных сообщений.
+    Это можно использовать как список покупок, дел, задач. 
+    При нажатии на элемент списка этот элемент отмечается как выполненный.""")
 
 
-def add_to_list(update: Update, context: CallbackContext):
+def text_handler(update: Update, context: CallbackContext):
     user = update.message.from_user
     lst = re.split('[,;\n]+', update.message.text)
     items_data = []
@@ -93,10 +97,11 @@ def error(update, context):
 def start_bot():
     Config.init_logging()
 
-    updater = Updater(TOKEN_ID, use_context=True)
+    updater = Updater(Config.TELEGRAM_TOKEN, use_context=True)
 
     updater.dispatcher.add_handler(CommandHandler('start', start_command_handler))
     updater.dispatcher.add_handler(CommandHandler('help', help_command_handler))
+    updater.dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, text_handler))
 
     updater.dispatcher.add_handler(CallbackQueryHandler(done, pattern='^done_'))
     updater.dispatcher.add_handler(CallbackQueryHandler(remove, pattern='^remove_'))
@@ -105,11 +110,11 @@ def start_bot():
     updater.dispatcher.add_handler(CallbackQueryHandler(confirmation_remove_all, pattern='^confirmation_remove_all$'))
     updater.dispatcher.add_handler(CallbackQueryHandler(remove_all, pattern='^clear_all$'))
 
-    updater.dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, add_to_list))
-
     # log all errors
     updater.dispatcher.add_error_handler(error)
 
+    notification = AdminNotification(updater.bot)
+    notification.init_handlers(updater.dispatcher)
     # Start the Bot
     if Config.MODE == 'webhook':
         logging.info(f"Starting webhook mode on port {Config.PORT}")
