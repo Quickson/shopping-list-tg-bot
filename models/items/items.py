@@ -1,8 +1,11 @@
 from models.base import BaseModel
 from peewee import *
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-REMOVE_EMOJI = '\u274C'
-DONE_EMOJI = '\u2705'
+from telegram import InlineKeyboardButton
+import emoji
+
+REMOVE_EMOJI = emoji.emojize(':x:', True)
+DONE_EMOJI = emoji.emojize(':white_check_mark:', True)
+
 
 # Определяем модель предметы
 class Items(BaseModel):

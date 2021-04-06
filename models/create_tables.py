@@ -1,9 +1,9 @@
 from models.base import db
 from models.users.users import Users
 from models.items.items import Items
+from models.messages.messages import Messages
 
-
-MODELS = [Users, Items]
+MODELS = [Users, Items, Messages]
 
 
 def create_tables():

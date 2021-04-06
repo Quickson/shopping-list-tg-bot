@@ -14,20 +14,47 @@ from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
 from models.users.users import save_user
+from models.messages.messages import Messages
 import re
 from clear_list import remove_all, confirmation_remove_all, show_list
 from addons.admins_notifications import AdminNotification
+import emoji
+
+HELP_TEXT = emoji.emojize('''
+Бот формирует список из отправленных ему сообщений :memo:.
+При нажатии на элемент списка он отмечается как выполненный :white_check_mark:.
+Для удаления элемента используется кнопка :x:.
+''', True)
+# Это можно использовать как список покупок, дел, задач.
+
+def answer_list(update):
+    user = update.message.from_user
+    keyboard = get_keyboard_markup_list(user)
+    res_msg = update.message.reply_text('Ваш список:', reply_markup=InlineKeyboardMarkup(keyboard))
+
+    msg = Messages.get_or_none(Messages.chat_id == update.message.chat_id)
+    if msg:
+        updater = Updater(Config.TELEGRAM_TOKEN, use_context=True)
+        try:
+            updater.bot.delete_message(msg.chat_id, msg.msg_id)
+            updater.bot.delete_message(update.message.chat_id, update.message.message_id)
+        except:
+            pass
+        msg.msg_id = res_msg.message_id
+        msg.date = res_msg.date
+        msg.save()
+    else:
+        Messages.create(msg_id=res_msg.message_id,
+                        chat_id=res_msg.chat.id,
+                        date=res_msg.date)
 
 
 def start_command_handler(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     logging.info("users %s started the conversation.", user)
-
     save_user(user)
 
-    keyboard = get_keyboard_markup_list(user)
-    update.message.reply_text('Ваш список:', reply_markup=InlineKeyboardMarkup(keyboard))
-    logging.info("users %s started the conversation.", update.message)
+    answer_list(update)
 
 
 def done(update: Update, context: CallbackContext) -> None:
@@ -65,9 +92,7 @@ def remove(update: Update, context: CallbackContext) -> None:
 
 
 def help_command_handler(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("""Бот формирует список из отправленных сообщений.
-    Это можно использовать как список покупок, дел, задач. 
-    При нажатии на элемент списка этот элемент отмечается как выполненный.""")
+    update.message.reply_text(HELP_TEXT)
 
 
 def text_handler(update: Update, context: CallbackContext):
@@ -84,9 +109,7 @@ def text_handler(update: Update, context: CallbackContext):
         })
     Items.insert_many(items_data).execute()
 
-    keyboard = get_keyboard_markup_list(user)
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_markdown('Ваш список:', reply_markup=reply_markup)
+    answer_list(update)
 
 
 def error(update, context):
