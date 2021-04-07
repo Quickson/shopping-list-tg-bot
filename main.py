@@ -1,8 +1,9 @@
 
 from models.create_tables import create_tables
-from bot import start_bot
+from bot import BotBL
 
 
 if __name__ == '__main__':
     create_tables()
-    start_bot()
+    bot = BotBL()
+    bot.start()
