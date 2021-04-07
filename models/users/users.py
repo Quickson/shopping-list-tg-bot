@@ -21,3 +21,12 @@ def save_user(tg_user):
         Users.create(tg_id=tg_user.id, first_name=tg_user.first_name,
                      last_name=tg_user.last_name, username=tg_user.username,
                      language_code=tg_user.language_code)
+
+
+def is_new_user(tg_user):
+    cur_user = Users.get_or_none(Users.tg_id == tg_user.id)
+    if cur_user is None:
+        return True
+    else:
+        return False
+

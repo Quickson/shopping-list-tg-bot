@@ -13,7 +13,7 @@ from const import Config
 from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 from models.items.items import Items, get_keyboard_markup_list
-from models.users.users import save_user
+from models.users.users import save_user, is_new_user
 from models.messages.messages import Messages
 import re
 from clear_list import remove_all, confirmation_remove_all, show_list
@@ -104,11 +104,12 @@ class BotBL:
     def start_command_handler(self, update: Update, context: CallbackContext) -> None:
         user = update.message.from_user
         logging.info("users %s started the conversation.", user)
-        save_user(user)
+        if is_new_user(user):
+            save_user(user)
+            self.notification.notify('New user {}\nId = {}\n{}'.format(user.full_name, user.id, user.link))
 
         self.answer_list(update)
 
-    @staticmethod
     def done(self, update: Update, context: CallbackContext) -> None:
         query = update.callback_query
         data = query.data
@@ -126,7 +127,6 @@ class BotBL:
         )
         query.answer()
 
-    @staticmethod
     def remove(self, update: Update, context: CallbackContext) -> None:
         query = update.callback_query
         data = query.data.split('_')
@@ -142,7 +142,6 @@ class BotBL:
         )
         query.answer()
 
-    @staticmethod
     def help_command_handler(self, update: Update, context: CallbackContext) -> None:
         update.message.reply_text(HELP_TEXT)
 
