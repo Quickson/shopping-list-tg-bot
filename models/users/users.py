@@ -1,5 +1,6 @@
 from models.base import BaseModel
 from peewee import *
+from models.items.items import Items
 
 
 # Определяем модель пользователя
@@ -10,6 +11,7 @@ class Users(BaseModel):
     last_name = TextField(column_name='last_name', null=True)
     username = TextField(column_name='username', null=True)
     language_code = TextField(column_name='language_code', null=True)
+    selected_list = IntegerField(column_name='selected_list', null=True)
 
     class Meta:
         table_name = 'Users'
@@ -30,3 +32,22 @@ def is_new_user(tg_user):
     else:
         return False
 
+
+def set_selected_list(tg_user, list_id):
+    user = Users.get(Users.tg_id == tg_user)
+    user.selected_list = list_id
+    user.save()
+
+
+def get_selected_list_id(tg_user):
+    user = Users.get(Users.tg_id == tg_user)
+    return user.selected_list
+
+
+def get_selected_list(tg_user):
+    item = Users.\
+        select(Items).\
+        join(Items, on=(Users.selected_list == Items.id), attr='list').\
+        where(Users.tg_id == tg_user).dicts().get()
+
+    return item
