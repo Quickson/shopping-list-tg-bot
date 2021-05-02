@@ -12,7 +12,7 @@ import logging
 from const import Config
 from telegram import InlineKeyboardMarkup, Update, ReplyKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters, ConversationHandler
-from models.items.items import Items, items_keyboard_markup, get_user_lists, get_items_count
+from models.items.items import Items, get_user_lists, get_items_count, get_items
 from models.users.users import save_user, is_new_user, get_selected_list_id, set_selected_list, get_selected_list
 from models.messages.messages import Messages
 import re
@@ -32,7 +32,16 @@ MAIN_KEYBOARD_SETTINGS = 'Настройки'
 MAIN_KEYBOARD_NAMES_LIST = [MAIN_KEYBOARD_MY_LIST, MAIN_KEYBOARD_SETTINGS]
 
 
-FIRST, SECOND = range(2)
+FIRST, SECOND, THREE, FOUR = range(4)
+
+REMOVE_EMOJI = emoji.emojize(':x:', True)
+DONE_EMOJI = emoji.emojize(':white_check_mark:', True)
+MAG_EMOJI = emoji.emojize(':mag:', True)
+ARROW_BACKWARD_EMOJI = emoji.emojize(':arrow_backward:', True)
+PENCIL_EMOJI = emoji.emojize(':pencil2:', True)
+
+
+BACK_BUTTON_TEXT = '{} Назад'.format(ARROW_BACKWARD_EMOJI)
 
 
 def user_from_update(update: Update):
@@ -44,10 +53,36 @@ def error(update, context):
     logging.warning('Update "%s" caused error "%s"', update, context.error)
 
 
+def items_keyboard_markup(list_id):
+    items = get_items(list_id)
+    keyboard = []
+    for item in items:
+        item_val_name = '{} {}'.format(DONE_EMOJI, item.get('name')) if item.get('done') else item.get('name')
+        item_line = [
+            InlineKeyboardButton(item_val_name, callback_data='done_'+str(item.get('id'))),
+        ]
+        keyboard.append(item_line)
+
+    if len(keyboard) > 0:
+        list_line = common_inline_keyboard()
+        list_line.append(InlineKeyboardButton(PENCIL_EMOJI, callback_data='edit_handler'))
+        keyboard.append(list_line)
+    return keyboard
+
+
+def common_inline_keyboard():
+    return [
+        InlineKeyboardButton(MAG_EMOJI, callback_data='full_name_handler'),
+        InlineKeyboardButton(REMOVE_EMOJI, callback_data='delete_handler'),
+    ]
+
+
 class BotBL:
+
     def __init__(self):
         self.updater = Updater(Config.TELEGRAM_TOKEN, use_context=True)
         self.notification = AdminNotification(self.updater.bot)
+
 
     def start(self):
         Config.init_logging()
@@ -84,24 +119,41 @@ class BotBL:
                 CallbackQueryHandler(self.entry_point_callback_handler),
                 CommandHandler('start', self.start_command_handler),
                 CommandHandler('help', self.help_command_handler),
-                MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.my_list_handler),
+                MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.show_my_list_handler),
                 MessageHandler(Filters.text(MAIN_KEYBOARD_SETTINGS), self.settings_handler)
             ],
             states={
                 FIRST: [
                     MessageHandler(text_filters, self.list_text_handler),
-                    MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.my_list_handler),
-                    CallbackQueryHandler(self.selected_list_handler, pattern='^selectedList_'),
+                    MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.show_my_list_handler),
+                    MessageHandler(Filters.text(MAIN_KEYBOARD_SETTINGS), self.settings_handler),
+                    CallbackQueryHandler(self.selected_list_handler, pattern='^selectedList_\d+$'),
+                    CallbackQueryHandler(self.full_name_handler, pattern='^full_name_handler$'),
+                    CallbackQueryHandler(self.delete_handler, pattern='^delete_handler$')
                 ],
                 SECOND: [
                     MessageHandler(text_filters, self.text_handler),
-                    MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.my_list_handler),
-                    CallbackQueryHandler(self.done, pattern='^done_'),
-                    CallbackQueryHandler(self.remove, pattern='^remove_'),
-                    CallbackQueryHandler(self.answer_list, pattern='^show_list$'),
-                    CallbackQueryHandler(self.confirmation_remove_all, pattern='^confirmation_remove_all$'),
-                    CallbackQueryHandler(self.remove_all, pattern='^clear_all$')
+                    MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.show_my_list_handler),
+                    MessageHandler(Filters.text(MAIN_KEYBOARD_SETTINGS), self.settings_handler),
+                    CallbackQueryHandler(self.done, pattern='^done_\d+$'),
+                    CallbackQueryHandler(self.full_name_handler, pattern='^full_name_handler$'),
+                    CallbackQueryHandler(self.delete_handler, pattern='^delete_handler$'),
+                    CallbackQueryHandler(self.edit_handler, pattern='^edit_handler$'),
                 ],
+                THREE: [
+                    MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.show_my_list_handler),
+                    MessageHandler(Filters.text(MAIN_KEYBOARD_SETTINGS), self.settings_handler),
+                    CallbackQueryHandler(self.back_handler, pattern='^back_handler$'),
+                    CallbackQueryHandler(self.delete_handler, pattern='^delete_handler$'),
+                    CallbackQueryHandler(self.show_full_name_handler, pattern='^showFullName_\d+$'),
+                    CallbackQueryHandler(self.remove, pattern='^remove_\d+$'),
+                    CallbackQueryHandler(self.confirmation_remove_all, pattern='^confirmation_remove_all$'),
+                    CallbackQueryHandler(self.remove_all, pattern='^clear_all$'),
+                ],
+                FOUR: [
+                    MessageHandler(text_filters, self.edit_text_handler),
+                    CallbackQueryHandler(self.back_handler, pattern='^back_handler$'),
+                ]
             },
             fallbacks=[CommandHandler('start', self.start_command_handler)],
         )
@@ -114,28 +166,44 @@ class BotBL:
 
         self.notification.init_handlers(self.updater.dispatcher)
 
-    def answer_list(self, update: Update, context: CallbackContext):
+    def show_full_name_handler(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        data = query.data.split('_')
+        item = Items.get_or_none(Items.id == int(data[1]))
+        query.answer(text=item.name, show_alert=True)
+
+        return THREE
+
+    def show_items_in_list(self, update: Update, context: CallbackContext):
         user = user_from_update(update)
         selected_list = get_selected_list(user.id)
         keyboard = items_keyboard_markup(selected_list.get('id'))
 
         txt = 'Cписок \"{}\"'.format(selected_list.get('name'))
         if len(keyboard) == 0:
-            txt += ' пуст'
+            txt += ''' пуст.
+Пришлите мне название того, что нужно добавить.
+'''
         else:
             txt += ':'
+
+        self._answer_message_or_callback(update, txt, InlineKeyboardMarkup(keyboard))
+
+        return SECOND
+
+    def _answer_message_or_callback(self, update, text: str, keyboard_markup):
         if update.message is None:
             update.callback_query.edit_message_text(
-                txt,
-                reply_markup=InlineKeyboardMarkup(keyboard),
+                text,
+                reply_markup=keyboard_markup,
             )
             update.callback_query.answer()
         else:
-            res_msg = update.message.reply_text(txt,
-                                                reply_markup=InlineKeyboardMarkup(keyboard))
-            self.clear_for_new_msg(update, res_msg)
+            res_msg = update.message.reply_text(text,
+                                                reply_markup=keyboard_markup)
+            self._clear_for_new_msg(update, res_msg)
 
-    def clear_for_new_msg(self, update: Update, new_msg):
+    def _clear_for_new_msg(self, update: Update, new_msg):
         msg = Messages.get_or_none(Messages.chat_id == update.message.chat_id)
         if msg:
             try:
@@ -200,15 +268,18 @@ class BotBL:
         data = query.data.split('_')
         logging.info("callback remove: data = %s", data)
 
-        items_query = Items.delete().where(Items.id == int(data[1]))
+        id_to_delete = int(data[1])
+        items_query = Items.delete().where((Items.id == id_to_delete) | (Items.parent == id_to_delete))
         items_query.execute()
 
         keyboard_list = query.message.reply_markup.inline_keyboard
-        new_keyboard_list = [i for i in keyboard_list if len(i) <= 1 or i[1].callback_data != query.data]
+        new_keyboard_list = [i for i in keyboard_list if len(i) < 1 or i[0].callback_data != query.data]
         query.edit_message_reply_markup(
             InlineKeyboardMarkup(new_keyboard_list)
         )
         query.answer()
+
+        return THREE
 
     def help_command_handler(self, update: Update, context: CallbackContext) -> None:
         update.message.reply_text(HELP_TEXT)
@@ -229,8 +300,16 @@ class BotBL:
             })
         Items.insert_many(items_data).execute()
 
-        self.answer_list(update, context)
-        return SECOND
+        return self.show_items_in_list(update, context)
+
+    def edit_text_handler(self, update: Update, context: CallbackContext):
+        user = user_from_update(update)
+        list_id = get_selected_list_id(user.id)
+        item = Items.get(Items.id == list_id)
+        item.name = update.message.text
+        item.save()
+
+        return self.show_items_in_list(update, context)
 
     def list_text_handler(self, update: Update, context: CallbackContext):
         user = user_from_update(update)
@@ -246,17 +325,16 @@ class BotBL:
             })
         Items.insert_many(items_data).execute()
 
-        self.my_list_handler(update, None)
+        self.show_my_list_handler(update, None)
         return FIRST
 
     def selected_list_handler(self, update: Update, context: CallbackContext):
         user = user_from_update(update)
         data = update.callback_query.data.split('_')
         set_selected_list(user.id, int(data[1]))
-        self.answer_list(update, context)
-        return SECOND
+        return self.show_items_in_list(update, context)
 
-    def my_list_handler(self, update: Update, context: CallbackContext):
+    def show_my_list_handler(self, update: Update, context: CallbackContext):
         user = user_from_update(update)
         set_selected_list(user.id, None)
         lsts = get_user_lists(user.id)
@@ -272,23 +350,89 @@ class BotBL:
             ]
             keyboard.append(list_line)
 
-        txt = 'Ваши списки:' if len(keyboard) != 0 else 'У вас нет созданных списков'
-        if update.message:
-            msg = update.message.reply_text(txt, reply_markup=InlineKeyboardMarkup(keyboard))
-            self.clear_for_new_msg(update, msg)
-        else:
-            query = update.callback_query
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            query.edit_message_text(
-                reply_markup=reply_markup,
-                text=txt,
-            )
-            query.answer()
+        if len(keyboard) > 0:
+            list_line = common_inline_keyboard()
+            keyboard.append(list_line)
+
+        txt = 'Ваши списки:' if len(keyboard) != 0 else '''У вас нет созданных списков.
+Пришлите мне название списка для его создания'''
+
+        self._answer_message_or_callback(update, txt, InlineKeyboardMarkup(keyboard))
 
         return FIRST
 
+    def back_handler(self, update: Update, context: CallbackContext):
+        user = user_from_update(update)
+        selected_lst_id = get_selected_list_id(user.id)
+        if selected_lst_id is None:
+            return self.show_my_list_handler(update, context)
+        else:
+            return self.show_items_in_list(update, context)
+
+    def edit_handler(self, update: Update, context: CallbackContext):
+        keyboard = []
+        keyboard.append([InlineKeyboardButton(BACK_BUTTON_TEXT, callback_data='back_handler')])
+
+        self._answer_message_or_callback(update,
+                                         'Введите новое название списка:',
+                                         InlineKeyboardMarkup(keyboard))
+        return FOUR
+
+    def delete_handler(self, update: Update, context: CallbackContext):
+        user = user_from_update(update)
+        selected_lst_id = get_selected_list_id(user.id)
+        lsts = []
+        if selected_lst_id is None:
+            lsts = get_user_lists(user.id)
+        else:
+            lsts = get_items(selected_lst_id)
+
+        keyboard = []
+        for lst in lsts:
+            name = lst.get('name')
+            item_val_name = '{} {}'.format(REMOVE_EMOJI, name)
+            list_line = [
+                InlineKeyboardButton(item_val_name, callback_data='remove_' + str(lst.get('id')))
+            ]
+            keyboard.append(list_line)
+
+        # Кнопка удалить все доступна только внутри списка
+        if selected_lst_id is not None:
+            keyboard.append([InlineKeyboardButton('{0}Удалить всё{0}'.format(REMOVE_EMOJI), callback_data='confirmation_remove_all')])
+
+        keyboard.append([InlineKeyboardButton(BACK_BUTTON_TEXT, callback_data='back_handler')])
+
+        self._answer_message_or_callback(update,
+                                         'Выберите элемент для его удаления',
+                                         InlineKeyboardMarkup(keyboard))
+        return THREE
+
+    def full_name_handler(self, update: Update, context: CallbackContext):
+        user = user_from_update(update)
+        selected_lst_id = get_selected_list_id(user.id)
+        lsts = []
+        if selected_lst_id is None:
+            lsts = get_user_lists(user.id)
+        else:
+            lsts = get_items(selected_lst_id)
+
+        keyboard = []
+        for lst in lsts:
+            name = lst.get('name')
+            list_line = [
+                InlineKeyboardButton(name, callback_data='showFullName_' + str(lst.get('id')))
+            ]
+            keyboard.append(list_line)
+
+        keyboard.append([InlineKeyboardButton(BACK_BUTTON_TEXT, callback_data='back_handler')])
+
+        self._answer_message_or_callback(update,
+                                         'Выберите элемент, чтобы показать полное название',
+                                         InlineKeyboardMarkup(keyboard))
+        return THREE
+
     def settings_handler(self, update: Update, context: CallbackContext):
-        pass
+        update.message.reply_text('Извините, в данный момент эта функция не реализована')
 
     def entry_point_text_handler(self, update: Update, context: CallbackContext):
         user = user_from_update(update)
@@ -301,13 +445,21 @@ class BotBL:
             return self.text_handler(update, context)
 
     def entry_point_callback_handler(self, update: Update, context: CallbackContext):
-        pass
+        for hl_k, hl_v in self.updater.dispatcher.handlers.items():
+            for h in hl_v:
+                if isinstance(h, ConversationHandler):
+                    states = h.states
+                    for s_k, s_v in states.items():
+                        for h_ in s_v:
+                            if isinstance(h_, CallbackQueryHandler) and h_.check_update(update):
+                                h_.callback(update, context)
+                                return s_k
 
     def confirmation_remove_all(self, update: Update, context: CallbackContext):
         query = update.callback_query
         keyboard = [
             [InlineKeyboardButton("ДА! Удалить все", callback_data='clear_all')],
-            [InlineKeyboardButton("НЕТ! Я передумал", callback_data='show_list')],
+            [InlineKeyboardButton("НЕТ! Я передумал", callback_data='delete_handler')],
         ]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -321,8 +473,8 @@ class BotBL:
         user = user_from_update(update)
         selected_list = get_selected_list_id(user.id)
         items_query = Items.delete().where(Items.user_tg_id == int(user.id),
-                                           (Items.parent == selected_list) | (Items.id == selected_list))
+                                           (Items.parent == selected_list))
         items_query.execute()
         set_selected_list(user.id, None)
-        return self.my_list_handler(update, context)
+        return self.show_my_list_handler(update, context)
 

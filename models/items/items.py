@@ -1,10 +1,5 @@
 from models.base import BaseModel
 from peewee import *
-from telegram import InlineKeyboardButton
-import emoji
-
-REMOVE_EMOJI = emoji.emojize(':x:', True)
-DONE_EMOJI = emoji.emojize(':white_check_mark:', True)
 
 
 # Определяем модель предметы
@@ -29,22 +24,6 @@ def get_items(list_id):
 
 def get_items_count(list_id):
     return Items.select().where(Items.parent == list_id).count()
-
-
-def items_keyboard_markup(list_id):
-    items = get_items(list_id)
-    keyboard = []
-    for item in items:
-        item_val_name = '{} {}'.format(DONE_EMOJI, item.get('name')) if item.get('done') else item.get('name')
-        item_line = [
-            InlineKeyboardButton(item_val_name, callback_data='done_'+str(item.get('id'))),
-            InlineKeyboardButton(REMOVE_EMOJI, callback_data='remove_' + str(item.get('id'))),
-        ]
-        keyboard.append(item_line)
-
-    if len(keyboard) > 0:
-        keyboard.append([InlineKeyboardButton('Очистить список', callback_data='confirmation_remove_all')])
-    return keyboard
 
 
 def get_user_lists(user_id):
