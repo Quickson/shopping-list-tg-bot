@@ -39,6 +39,7 @@ DONE_EMOJI = emoji.emojize(':white_check_mark:', True)
 MAG_EMOJI = emoji.emojize(':mag:', True)
 ARROW_BACKWARD_EMOJI = emoji.emojize(':arrow_backward:', True)
 PENCIL_EMOJI = emoji.emojize(':pencil2:', True)
+FLOPPY_DISK_EMOJI = emoji.emojize(':floppy_disk:', True)
 
 
 BACK_BUTTON_TEXT = '{} Назад'.format(ARROW_BACKWARD_EMOJI)
@@ -66,6 +67,7 @@ def items_keyboard_markup(list_id):
     if len(keyboard) > 0:
         list_line = common_inline_keyboard()
         list_line.append(InlineKeyboardButton(PENCIL_EMOJI, callback_data='edit_handler'))
+        list_line.append(InlineKeyboardButton(FLOPPY_DISK_EMOJI, callback_data='save_handler'))
         keyboard.append(list_line)
     return keyboard
 
@@ -139,6 +141,7 @@ class BotBL:
                     CallbackQueryHandler(self.full_name_handler, pattern='^full_name_handler$'),
                     CallbackQueryHandler(self.delete_handler, pattern='^delete_handler$'),
                     CallbackQueryHandler(self.edit_handler, pattern='^edit_handler$'),
+                    CallbackQueryHandler(self.save_handler, pattern='^save_handler$'),
                 ],
                 THREE: [
                     MessageHandler(Filters.text(MAIN_KEYBOARD_MY_LIST), self.show_my_list_handler),
@@ -354,7 +357,12 @@ class BotBL:
             list_line = common_inline_keyboard()
             keyboard.append(list_line)
 
-        txt = 'Ваши списки:' if len(keyboard) != 0 else '''У вас нет созданных списков.
+        txt = ''
+        if len(keyboard) != 0:
+            txt = '''Ваши списки:
+(нажмите на список, чтобы перейти в него)'''
+        else:
+            txt = '''У вас нет созданных списков.
 Пришлите мне название списка для его создания'''
 
         self._answer_message_or_callback(update, txt, InlineKeyboardMarkup(keyboard))
@@ -377,6 +385,21 @@ class BotBL:
                                          'Введите новое название списка:',
                                          InlineKeyboardMarkup(keyboard))
         return FOUR
+
+    def save_handler(self, update: Update, context: CallbackContext):
+        user = user_from_update(update)
+        selected_lst_id = get_selected_list_id(user.id)
+        lsts = get_items(selected_lst_id)
+
+        txt = ''
+        i = 1
+        for lst in lsts:
+            name = lst.get('name')
+            txt += f'{i}) {name} \n'
+            i += 1
+
+        update.effective_message.reply_text(txt)
+        update.callback_query.answer()
 
     def delete_handler(self, update: Update, context: CallbackContext):
         user = user_from_update(update)
